@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gemini AAPI Pro | الترسانة الكاملة</title>
+    <title>AAPI Pro | الترسانة الموحدة</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
             --shadow: 0 4px 20px rgba(0,0,0,0.08);
             --code-bg: #1e1e1e; --code-text: #d4d4d4;
             --code-header: #2d2d2d;
+            --gpt-theme: #10a37f;
         }
 
         [data-theme="dark"] {
@@ -28,14 +29,11 @@
 
         * { box-sizing: border-box; transition: background 0.25s, color 0.25s; }
 
-        /* 1. منطق مربع إدخال الأوامر (الاستقرار وعدم التغطية) */
         body {
             font-family: 'IBM Plex Sans Arabic', sans-serif;
             background-color: var(--bg); color: var(--text);
             margin: 0; display: flex; flex-direction: column;
-            height: 100vh;
-            height: 100dvh; /* مهم للجوال */
-            overflow: hidden; /* السكرول داخل الشات فقط */
+            height: 100vh; height: 100dvh; overflow: hidden;
         }
 
         header {
@@ -64,9 +62,7 @@
         .input-field input { padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--secondary); color: var(--text); }
 
         #chat-viewport {
-            flex: 1; /* يأخذ المساحة المتاحة ويجبر الفوتر على البقاء بالأسفل */
-            overflow-y: auto;
-            padding: 20px 10%; 
+            flex: 1; overflow-y: auto; padding: 20px 10%; 
             display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
 
@@ -80,31 +76,18 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04); max-width: 100%;
         }
 
-        /* 2. CSS الجداول المطور */
         .bubble table {
             border-collapse: collapse; width: 100%; margin: 15px 0;
             background: var(--card); border-radius: 8px; overflow: hidden;
             display: block; overflow-x: auto; border: 1px solid var(--border);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        .bubble th {
-            background: var(--primary); color: white !important;
-            padding: 12px; text-align: right; font-weight: 600; white-space: nowrap;
-        }
+        .bubble th { background: var(--primary); color: white !important; padding: 12px; text-align: right; }
+        .bubble td { border: 1px solid var(--border); padding: 10px; text-align: right; }
 
-        .bubble td {
-            border: 1px solid var(--border); padding: 10px;
-            text-align: right; min-width: 100px; color: var(--text);
-        }
-
-        .bubble tr:nth-child(even) { background-color: rgba(0,0,0,0.03); }
-
-        .bubble button:not(.copy-btn-snippet) { display: none !important; }
         .user-align .bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
         .bot-align .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; max-width: 92%; }
 
-        /* حاوية الكود */
         .code-wrapper {
             margin: 15px 0; border-radius: 10px; overflow: hidden;
             border: 1px solid var(--border); background: var(--code-bg);
@@ -115,7 +98,6 @@
             display: flex; justify-content: space-between; align-items: center;
             padding: 8px 15px; background: var(--code-header);
             color: #00cf7f; font-size: 11px; font-family: monospace;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
         .copy-btn-snippet {
@@ -123,23 +105,19 @@
             padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px;
         }
 
-        .bubble pre { 
-            margin: 0 !important; padding: 15px; overflow-x: auto;
-            color: var(--code-text); font-family: 'Consolas', monospace;
-            font-size: 14px; background: transparent !important;
-        }
+        .bubble pre { margin: 0 !important; padding: 15px; overflow-x: auto; color: var(--code-text); font-family: 'Consolas', monospace; font-size: 14px; background: transparent !important; }
 
+        /* منطقة الإدخال المطورة مع القائمة المنسدلة */
         .footer-area {
-            flex-shrink: 0; /* منع تقلص منطقة الإدخال */
-            padding: 15px; background: var(--card); 
+            flex-shrink: 0; padding: 15px; background: var(--card); 
             border-top: 1px solid var(--border); width: 100%;
             display: flex; flex-direction: column; align-items: center;
         }
 
         .input-container {
-            width: 100%; max-width: 800px; background: var(--secondary);
-            border: 1px solid var(--border); border-radius: 24px;
-            display: flex; align-items: center; padding: 4px 12px;
+            width: 100%; max-width: 850px; background: var(--secondary);
+            border: 1px solid var(--border); border-radius: 28px;
+            display: flex; align-items: center; padding: 4px 16px; gap: 8px;
         }
 
         textarea {
@@ -148,18 +126,22 @@
             max-height: 150px; min-height: 24px; font-family: inherit;
         }
 
-        .send-btn {
-            background: var(--primary); color: white; border: none;
-            width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
+        /* تنسيق قائمة اختيار الموديل */
+        .engine-select {
+            background: var(--card); color: var(--text);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 8px 12px; font-size: 13px; font-weight: 600;
+            cursor: pointer; outline: none; transition: 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* تحسين بصري لتعطيل الزر */
-        .send-btn:disabled {
-            background: #ccc !important;
-            cursor: not-allowed;
-            opacity: 0.6;
+        .send-btn {
+            background: var(--primary); color: white; border: none;
+            width: 42px; height: 42px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
+
+        .send-btn:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
 
         #status-bar { font-size: 12px; margin-bottom: 8px; color: var(--primary); font-weight: 700; display: none; }
         .loader { width: 12px; height: 12px; border: 2px solid var(--primary); border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; margin-left: 8px; }
@@ -172,14 +154,15 @@
 
         @media (max-width: 768px) {
             #chat-viewport { padding: 20px 5%; }
-            .bot-align .bubble { max-width: 95%; }
+            .engine-select { padding: 6px 8px; font-size: 11px; }
+            .input-container { padding: 4px 10px; }
         }
     </style>
 </head>
 <body data-theme="light">
 
 <header>
-    <div class="logo">Gemini AAPI Pro</div>
+    <div class="logo">AAPI Pro Hub</div>
     <div class="nav-tools">
         <button class="tool-btn" onclick="toggleSettings()">⚙️</button>
         <button class="tool-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
@@ -199,14 +182,20 @@
 
 <div id="chat-viewport">
     <div class="msg-container bot-align">
-        <div class="bubble">مرحباً! تم دمج منطق الاستقرار، تنسيق الجداول، وإصلاح زر الإرسال.</div>
+        <div class="bubble">مرحباً! تم دمج Gemini و ChatGPT في واجهة واحدة. اختر الموديل من القائمة بجانب زر الإرسال وابدأ بسؤالك.</div>
     </div>
 </div>
 
 <div class="footer-area">
-    <div id="status-bar"><span class="loader"></span> جاري المعالجة...</div>
+    <div id="status-bar"><span class="loader"></span> جاري المعالجة بواسطة <span id="current-engine-name">Gemini</span>...</div>
     <div class="input-container">
+        <select id="engineSelect" class="engine-select" onchange="updateEngineStatus()">
+            <option value="gemini">Gemini 1.5</option>
+            <option value="chatgpt">ChatGPT-4o</option>
+        </select>
+
         <textarea id="promptInput" rows="1" placeholder="اكتب سؤالك هنا..." oninput="autoResize(this)"></textarea>
+        
         <button class="send-btn" id="sendBtn" onclick="startProcess()">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
@@ -220,7 +209,22 @@
         const theme = localStorage.getItem('cfg_theme') || 'light';
         document.body.setAttribute('data-theme', theme);
         document.getElementById('themeBtn').innerText = theme === 'light' ? '🌙' : '☀️';
+        updateEngineStatus();
     };
+
+    function updateEngineStatus() {
+        const select = document.getElementById('engineSelect');
+        const name = select.options[select.selectedIndex].text;
+        document.getElementById('current-engine-name').innerText = name;
+        
+        // تغيير لون هوية الموديل بصرياً
+        const btn = document.getElementById('sendBtn');
+        if(select.value === 'chatgpt') {
+            btn.style.background = 'var(--gpt-theme)';
+        } else {
+            btn.style.background = 'var(--primary)';
+        }
+    }
 
     function toggleTheme() {
         const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
@@ -248,30 +252,8 @@
         bubble.className = 'bubble';
         
         if (side === 'bot') {
-            bubble.innerHTML = text; // السماح بـ HTML للجداول والأكواد
-
-            const preBlocks = bubble.querySelectorAll('pre');
-            preBlocks.forEach(pre => {
-                if (pre.parentElement.classList.contains('code-wrapper')) return;
-                const wrapper = document.createElement('div');
-                wrapper.className = 'code-wrapper';
-                
-                let langName = 'code';
-                const codeInside = pre.querySelector('code');
-                if(codeInside) {
-                    const classes = Array.from(codeInside.classList);
-                    const langClass = classes.find(c => c.startsWith('language-'));
-                    if(langClass) langName = langClass.replace('language-', '');
-                }
-
-                const header = document.createElement('div');
-                header.className = 'code-header-bar';
-                header.innerHTML = `<span>${langName}</span><button class="copy-btn-snippet" onclick="copySnippet(this)">نسخ</button>`;
-                
-                pre.parentNode.insertBefore(wrapper, pre);
-                wrapper.appendChild(header);
-                wrapper.appendChild(pre);
-            });
+            bubble.innerHTML = text;
+            renderCodeBlocks(bubble);
         } else {
             bubble.innerText = text;
         }
@@ -289,10 +271,35 @@
         viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
     }
 
+    function renderCodeBlocks(bubble) {
+        const preBlocks = bubble.querySelectorAll('pre');
+        preBlocks.forEach(pre => {
+            if (pre.parentElement.classList.contains('code-wrapper')) return;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'code-wrapper';
+            
+            let langName = 'code';
+            const codeInside = pre.querySelector('code');
+            if(codeInside) {
+                const classes = Array.from(codeInside.classList);
+                const langClass = classes.find(c => c.startsWith('language-'));
+                if(langClass) langName = langClass.replace('language-', '');
+            }
+
+            const header = document.createElement('div');
+            header.className = 'code-header-bar';
+            header.innerHTML = `<span>${langName}</span><button class="copy-btn-snippet" onclick="copySnippet(this)">نسخ</button>`;
+            
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(header);
+            wrapper.appendChild(pre);
+        });
+    }
+
     async function copySnippet(btn) {
         const codeElement = btn.parentElement.nextElementSibling.querySelector('code') || btn.parentElement.nextElementSibling;
         await navigator.clipboard.writeText(codeElement.innerText);
-        btn.innerText = "✅ تم";
+        btn.innerText = "✅";
         setTimeout(() => btn.innerText = "نسخ", 2000);
     }
 
@@ -307,6 +314,7 @@
         const token = document.getElementById('ghToken').value;
         const repo = document.getElementById('ghRepo').value;
         const prompt = document.getElementById('promptInput').value.trim();
+        const engine = document.getElementById('engineSelect').value;
 
         if(!token || !repo || !prompt) return alert("تأكد من إعداد التوكن والمستودع!");
 
@@ -317,18 +325,20 @@
         document.getElementById('promptInput').value = '';
         document.getElementById('promptInput').style.height = 'auto';
         
-        // تعطيل الزر فوراً
         document.getElementById('sendBtn').disabled = true;
         document.getElementById('status-bar').style.display = 'block';
 
+        // اختيار ملف الـ YAML بناءً على اختيار القائمة
+        const workflowFile = (engine === 'gemini') ? 'gemini_api.yml' : 'gpt_api.yml';
+
         try {
-            const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/gemini_api.yml/dispatches`, {
+            const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/dispatches`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ref: 'main', inputs: { prompt: prompt } })
             });
 
-            if(!res.ok) throw new Error("خطأ في الاتصال بـ GitHub.");
+            if(!res.ok) throw new Error(`فشل الاتصال بـ GitHub. تأكد من وجود ملف ${workflowFile}`);
             checkStatus(repo, token);
         } catch (e) {
             createMessage("❌ خطأ: " + e.message, 'bot');
@@ -352,7 +362,7 @@
                     else { createMessage("❌ فشل الأكشن في التنفيذ.", 'bot'); resetUI(); }
                 }
             } catch (e) { console.error(e); }
-            if(Date.now() - startTime > 240000) { clearInterval(interval); resetUI(); }
+            if(Date.now() - startTime > 300000) { clearInterval(interval); resetUI(); }
         }, 5000);
     }
 
@@ -362,8 +372,9 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            const art = data.artifacts.find(a => a.name === 'gemini-json');
-            if (!art) throw new Error("لم يتم العثور على النتائج.");
+            // البحث عن أول أرتيفاكت متاح
+            const art = data.artifacts[0];
+            if (!art) throw new Error("لم يتم العثور على ملف النتائج.");
 
             const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
             const blob = await zipRes.blob();
@@ -373,7 +384,7 @@
             createMessage(JSON.parse(jsonStr).response, 'bot');
         } catch (e) {
             createMessage("❌ فشل استلام النتيجة: " + e.message, 'bot');
-        } finally { resetUI(); } // يضمن تفعيل الزر مجدداً
+        } finally { resetUI(); }
     }
 
     function resetUI() {
