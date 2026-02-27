@@ -62,9 +62,7 @@
         .input-field input { padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--secondary); color: var(--text); }
 
         #chat-viewport {
-            flex: 1; /* يأخذ المساحة المتاحة ويجبر الفوتر على البقاء بالأسفل */
-            overflow-y: auto;
-            padding: 20px 10%; 
+            flex: 1; overflow-y: auto; padding: 20px 10%; 
             display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
 
@@ -78,27 +76,15 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04); max-width: 100%;
         }
 
-        /* 2. CSS الجداول المطور */
         .bubble table {
             border-collapse: collapse; width: 100%; margin: 15px 0;
             background: var(--card); border-radius: 8px; overflow: hidden;
             display: block; overflow-x: auto; border: 1px solid var(--border);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        .bubble th {
-            background: var(--primary); color: white !important;
-            padding: 12px; text-align: right; font-weight: 600; white-space: nowrap;
-        }
+        .bubble th { background: var(--primary); color: white !important; padding: 12px; text-align: right; }
+        .bubble td { border: 1px solid var(--border); padding: 10px; text-align: right; }
 
-        .bubble td {
-            border: 1px solid var(--border); padding: 10px;
-            text-align: right; min-width: 100px; color: var(--text);
-        }
-
-        .bubble tr:nth-child(even) { background-color: rgba(0,0,0,0.03); }
-
-        .bubble button:not(.copy-btn-snippet) { display: none !important; }
         .user-align .bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
         .bot-align .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; max-width: 92%; }
 
