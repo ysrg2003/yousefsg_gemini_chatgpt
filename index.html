@@ -83,6 +83,11 @@
         }
 
         .bubble th { background: var(--primary); color: white !important; padding: 12px; text-align: right; }
+        /* إخفاء أي أزرار عشوائية يرسلها الموديل في الرد */
+        .bubble button:not(.copy-btn-snippet) { 
+            display: none !important; 
+        }
+
         .bubble td { border: 1px solid var(--border); padding: 10px; text-align: right; }
 
         .user-align .bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
