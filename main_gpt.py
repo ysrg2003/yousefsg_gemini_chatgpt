@@ -115,7 +115,7 @@ async def run_chatgpt_automation(prompt):
     # 10. حفظ النتيجة النهائية
     with open("gpt_result.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
-    print("💾 تم حفظ الرد المنظف في result.json")
+    print("💾 تم حفظ الرد المنظف في gpt_result.json")
 
 if __name__ == "__main__":
     user_prompt = sys.argv[1] if len(sys.argv) > 1 else "اكتب كود بايثون بسيط"
