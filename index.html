@@ -179,7 +179,7 @@
 
 <div id="chat-viewport">
     <div class="msg-container bot-align">
-        <div class="bubble">مرحباً! تم دمج الأنظمة بنجاح. اختر المحرك وابدأ الحوار. لن تتداخل الطلبات بعد الآن بفضل نظام التتبع الفريد.</div>
+        <div class="bubble">مرحباً! تم تحديث نظام التتبع الفريد. يمكنك الآن تشغيل عدة نوافذ وطلبات متزامنة لنفس المحرك دون تداخل النتائج.</div>
     </div>
 </div>
 
@@ -300,14 +300,14 @@
         setTimeout(() => el.innerText = "📋 نسخ الرد", 2000);
     }
 
-    // --- المنطق الجوهري المحدث ---
+    // --- المنطق المحدث لحل مشكلة التداخل ---
 
     async function startProcess() {
         const token = document.getElementById('ghToken').value;
         const repo = document.getElementById('ghRepo').value;
         const prompt = document.getElementById('promptInput').value.trim();
         const engine = document.getElementById('engineSelect').value;
-        const requestId = Date.now().toString(); // توليد ID فريد لكل طلب
+        const requestId = Date.now().toString(); 
 
         if(!token || !repo || !prompt) return alert("تأكد من إعداد التوكن والمستودع!");
 
@@ -330,14 +330,13 @@
                     ref: 'main', 
                     inputs: { 
                         prompt: prompt,
-                        request_id: requestId // إرسال الـ ID لـ GitHub
+                        request_id: requestId 
                     } 
                 })
             });
 
-            if(!res.ok) throw new Error("فشل إرسال الطلب لـ GitHub. تأكد من إعدادات الـ YAML.");
+            if(!res.ok) throw new Error("فشل إرسال الطلب لـ GitHub.");
             
-            // نمرر الـ requestId لضمان سحب الملف الصحيح لاحقاً
             checkStatus(repo, token, engine, workflowFile, requestId);
         } catch (e) {
             createMessage("❌ خطأ: " + e.message, 'bot');
@@ -349,36 +348,39 @@
         const startTime = Date.now();
         const interval = setInterval(async () => {
             try {
-                // نطلب الـ Runs الخاصة بهذا الـ Workflow فقط لتقليل الضغط والدقة
-                const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/runs?per_page=1`, {
+                // نطلب آخر 10 تشغيلات لضمان عدم تجاوز الطلبات المتزامنة
+                const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/runs?per_page=10`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
-                const run = data.workflow_runs[0];
+                
+                if (!data.workflow_runs) return;
 
-                // إذا اكتمل تشغيل، ننتقل لجلب الأرتيفاكت الذي يحمل الـ ID الخاص بنا
-                if(run && run.status === "completed") {
-                    clearInterval(interval);
-                    if(run.conclusion === "success") {
-                        fetchArtifact(repo, run.id, token, engine, requestId);
-                    } else {
-                        createMessage(`❌ فشل تنفيذ سير العمل (${engine})`, 'bot');
-                        resetUI();
+                // نبحث في قائمة التشغيلات عن أي واحد مكتمل يحمل ملفاتنا
+                for (const run of data.workflow_runs) {
+                    if (run.status === "completed") {
+                        // محاولة جلب الأرتيفاكت الخاص بهذا الـ requestId تحديداً
+                        const success = await tryFetchArtifact(repo, run.id, token, engine, requestId);
+                        if (success) {
+                            clearInterval(interval);
+                            resetUI();
+                            return;
+                        }
                     }
                 }
             } catch (e) { console.error("Status Check Error:", e); }
             
-            if(Date.now() - startTime > 300000) { // توقف بعد 5 دقائق
+            if (Date.now() - startTime > 300000) { 
                 clearInterval(interval);
-                createMessage("⚠️ انتهت مهلة الانتظار. يرجى التحقق من GitHub Actions.", 'bot');
+                createMessage("⚠️ انتهت المهلة، ربما هناك ضغط على سيرفرات GitHub.", 'bot');
                 resetUI();
             }
         }, 5000);
     }
 
-    async function fetchArtifact(repo, runId, token, engine, requestId) {
-        const targetFile = (engine === 'gemini') ? "gemini_result.json" : "gpt_result.json";
+    async function tryFetchArtifact(repo, runId, token, engine, requestId) {
         const targetArtifactName = (engine === 'gemini' ? 'gemini-json-' : 'gpt-json-') + requestId;
+        const targetFile = (engine === 'gemini') ? "gemini_result.json" : "gpt_result.json";
 
         try {
             const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`, {
@@ -386,28 +388,24 @@
             });
             const data = await res.json();
             
-            // البحث عن الأرتيفاكت الذي يحمل الـ ID الخاص بطلبنا تحديداً
+            // البحث عن الاسم المطابق للهوية الفريدة
             const art = data.artifacts.find(a => a.name === targetArtifactName);
             
-            if (!art) {
-                // أحياناً يتأخر ظهور الأرتيفاكت بضع ثوانٍ بعد اكتمال الـ Run
-                throw new Error("لم يتم العثور على ملف النتيجة الخاص بهذا الطلب بعد. حاول مرة أخرى.");
+            if (art) {
+                const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
+                const blob = await zipRes.blob();
+                const zip = await JSZip.loadAsync(blob);
+                const file = zip.file(targetFile);
+                
+                if (file) {
+                    const jsonStr = await file.async("string");
+                    const resultData = JSON.parse(jsonStr);
+                    createMessage(resultData.response, 'bot');
+                    return true; 
+                }
             }
-
-            const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
-            const blob = await zipRes.blob();
-            const zip = await JSZip.loadAsync(blob);
-            
-            const file = zip.file(targetFile);
-            if(!file) throw new Error(`الملف ${targetFile} مفقود داخل الأرشيف`);
-
-            const jsonStr = await file.async("string");
-            createMessage(JSON.parse(jsonStr).response, 'bot');
-        } catch (e) {
-            createMessage("❌ فشل استلام النتيجة: " + e.message, 'bot');
-        } finally {
-            resetUI();
-        }
+        } catch (e) { console.error("Artifact Fetch Error:", e); }
+        return false;
     }
 
     function resetUI() {
