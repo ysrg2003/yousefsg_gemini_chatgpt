@@ -372,25 +372,33 @@
     }
 
     async function fetchArtifact(repo, runId, token) {
-        try {
-            const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            // البحث عن أول أرتيفاكت متاح
-            const art = data.artifacts[0];
-            if (!art) throw new Error("لم يتم العثور على ملف النتائج.");
+    // جلب نوع المحرك المختار حالياً
+    const engine = document.getElementById('engineSelect').value;
+    // تحديد اسم الملف المطلوب بناءً على المحرك
+    const targetFile = (engine === 'gemini') ? "gemini_result.json" : "gpt_result.json";
 
-            const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
-            const blob = await zipRes.blob();
-            const zip = await JSZip.loadAsync(blob);
-            const jsonStr = await zip.file("result.json").async("string");
-            
-            createMessage(JSON.parse(jsonStr).response, 'bot');
-        } catch (e) {
-            createMessage("❌ فشل استلام النتيجة: " + e.message, 'bot');
-        } finally { resetUI(); }
-    }
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const art = data.artifacts[0];
+        if (!art) throw new Error("لم يتم العثور على ملف النتائج.");
+
+        const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const blob = await zipRes.blob();
+        const zip = await JSZip.loadAsync(blob);
+        
+        // قراءة الملف المحدد (targetFile) بدلاً من الاسم الثابت
+        const jsonStr = await zip.file(targetFile).async("string");
+        
+        createMessage(JSON.parse(jsonStr).response, 'bot');
+    } catch (e) {
+        createMessage("❌ فشل استلام النتيجة: " + e.message, 'bot');
+    } finally { resetUI(); }
+}
+
+    
 
     function resetUI() {
         document.getElementById('sendBtn').disabled = false;
