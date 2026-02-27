@@ -70,7 +70,6 @@ async def run_gemini_automation(prompt):
             stable_count = 0
             
             # فحص استقرار الرد (90 محاولة كحد أقصى)
-            # نستخدم HTML هنا لأن التغيير قد يكون في "تنسيق الكود" وليس النص فقط
             for attempt in range(90): 
                 current_html = await page.evaluate(f'''() => {{
                     const els = document.querySelectorAll("{response_selector}");
@@ -84,19 +83,38 @@ async def run_gemini_automation(prompt):
                 elif len(current_html) > 0:
                     stable_count += 1
                 
-                # إذا استقر الرد لـ 8 ثوانٍ، نعتبره اكتمل
+                # إذا استقر الرد لـ 8 دورات فحص، نعتبره اكتمل
                 if stable_count >= 8:
                     print(f"✅ تم التقاط الرد المنسق بالكامل.")
                     break
                 
                 await asyncio.sleep(1)
 
-            # 9. استخراج النتيجة النهائية بـ HTML للحفاظ على القوالب (Templates)
+            # 9. استخراج النتيجة النهائية مع تنظيف أزرار Gemini الزائدة (الحل الجذري للمشكلة)
             final_res_html = await page.evaluate(f'''() => {{
                 const els = document.querySelectorAll("{response_selector}");
                 if (els.length > 0) {{
-                    // نأخذ آخر عنصر لضمان جلب الرد الأخير في المحادثة
-                    return els[els.length - 1].innerHTML; 
+                    // نأخذ نسخة من الرد الأخير للعمل عليها دون التأثير على الصفحة الأصلية
+                    const lastResponse = els[els.length - 1].cloneNode(true);
+                    
+                    // قائمة العناصر "المزعجة" التي تظهر فوق الكود في Gemini
+                    const selectorsToRemove = [
+                        'button',                   // حذف أي أزرار (نسخ، تعديل، إلخ)
+                        '.code-block-decoration',    // حذف زينة الكود الخاصة بجوجل
+                        'header',                   // حذف ترويسات لغة البرمجة الأصلية
+                        'mat-icon',                 // حذف الأيقونات المادية
+                        '.copy-code-button',        // زر النسخ الخاص بـ Gemini
+                        '.bottom-container',        // الحاوية السفلية للاقتراحات
+                        '#report-content'           // زر الإبلاغ
+                    ];
+
+                    selectorsToRemove.forEach(selector => {{
+                        const junk = lastResponse.querySelectorAll(selector);
+                        junk.forEach(el => el.remove());
+                    }});
+
+                    // إرجاع المحتوى النظيف فقط لتقوم واجهتك في index.html بتنسيقه
+                    return lastResponse.innerHTML; 
                 }}
                 return "خطأ: لم نتمكن من العثور على محتوى الرد.";
             }}''')
@@ -110,7 +128,7 @@ async def run_gemini_automation(prompt):
     # 10. حفظ النتيجة النهائية بتنسيق UTF-8 لضمان سلامة اللغة العربية
     with open("gemini_result.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
-    print("💾 تم حفظ الرد في gemini_result.json")
+    print("💾 تم حفظ الرد المنظف بنجاح في gemini_result.json")
 
 if __name__ == "__main__":
     # قراءة السؤال من سطر الأوامر (Command Line Argument)
