@@ -54,4 +54,4 @@ jobs:
         with:
           # تم تغيير اسم الأرتيفاكت لتمييز نتائج ChatGPT
           name: gpt-json
-          path: result.json
+          path: gpt_result.json
