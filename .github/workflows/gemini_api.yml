@@ -1,8 +1,14 @@
 name: Gemini Simple API
+
 on:
   workflow_dispatch:
     inputs:
       prompt:
+        description: 'نص السؤال المرسل للموديل'
+        required: true
+        type: string
+      request_id:
+        description: 'رقم تتبع الطلب لمنع التداخل'
         required: true
         type: string
 
@@ -21,41 +27,40 @@ jobs:
       - name: 📥 Download & Inject Assets
         run: |
           echo "📥 سحب الترسانة المضغوطة بـ Zstd..."
+          # تحميل الملف من الإصدار (Release)
           gh release download v1.0.0 -p "vendor_assets.tar.zst"
           
           echo "⚡ فك الضغط فائق السرعة..."
-          # -x: extract, -I: zstd, -f: file
           mkdir -p .temp_vendor
           tar -I zstd -xf vendor_assets.tar.zst -C .
           
-          # ملاحظة: بما أننا ضغطنا المحتويات مباشرة، الملفات ستنتشر في المجلد الحالي
-          # (python, browsers, camoufox_cache)
-          
-          echo "🔗 ربط المحرك..."
+          echo "🔗 ربط المحرك بالبيئة..."
           mkdir -p /home/runner/.cache
           ln -sf $(pwd)/camoufox_cache /home/runner/.cache/camoufox
           
+          # تأكد من صلاحيات التنفيذ للملفات المستخرجة
           chmod -R +x /home/runner/.cache/camoufox 2>/dev/null || true
           chmod -R +x browsers/ 2>/dev/null || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      
       - name: 🚀 Run Automation
         env:
           GEMINI_COOKIES: ${{ secrets.GEMINI_COOKIES }}
-          # تعريف المسارات للمكتبات والمحركات
+          # تعريف مسارات المكتبات والمحركات التي تم فك ضغطها
           PYTHONPATH: ${{ github.workspace }}/python
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/browsers
-          # إجبار المحرك على النظر في المسار المربوط
           CAMOUFOX_CACHE_DIR: /home/runner/.cache/camoufox
         run: |
-          echo "🎬 تشغيل المحرك الرئيسي..."
-          python main.py "${{ github.event.inputs.prompt }}"
+          echo "🎬 تشغيل المحرك الرئيسي لـ Gemini..."
+          # تمرير البرومبت للملف الرئيسي
+          python main.py "${{ inputs.prompt }}"
 
-      - name: 📤 Upload Result
+      - name: 📦 Upload Result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-json
+          # التطوير الأساسي: اسم الأرتيفاكت يحتوي على الـ Request ID لضمان عدم التداخل
+          name: gemini-json-${{ inputs.request_id }}
           path: gemini_result.json
+          retention-days: 1 # تقليل فترة الاحتفاظ لتوفير المساحة
