@@ -6,6 +6,7 @@
     <title>AAPI Pro | الترسانة الموحدة</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
@@ -76,12 +77,12 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04); max-width: 100%;
         }
 
+        /* تحسين مظهر الجداول */
         .bubble table {
             border-collapse: collapse; width: 100%; margin: 15px 0;
             background: var(--card); border-radius: 8px; overflow: hidden;
             display: block; overflow-x: auto; border: 1px solid var(--border);
         }
-
         .bubble th { background: var(--primary); color: white !important; padding: 12px; text-align: right; }
         .bubble td { border: 1px solid var(--border); padding: 10px; text-align: right; }
 
@@ -107,7 +108,6 @@
 
         .bubble pre { margin: 0 !important; padding: 15px; overflow-x: auto; color: var(--code-text); font-family: 'Consolas', monospace; font-size: 14px; background: transparent !important; }
 
-        /* منطقة الإدخال المطورة مع القائمة المنسدلة */
         .footer-area {
             flex-shrink: 0; padding: 15px; background: var(--card); 
             border-top: 1px solid var(--border); width: 100%;
@@ -126,13 +126,11 @@
             max-height: 150px; min-height: 24px; font-family: inherit;
         }
 
-        /* تنسيق قائمة اختيار الموديل */
         .engine-select {
             background: var(--card); color: var(--text);
             border: 1px solid var(--border); border-radius: 12px;
             padding: 8px 12px; font-size: 13px; font-weight: 600;
             cursor: pointer; outline: none; transition: 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .send-btn {
@@ -164,7 +162,7 @@
 <header>
     <div class="logo">AAPI Pro Hub</div>
     <div class="nav-tools">
-        <button class="tool-btn" onclick="toggleSettings()">⚙️</button>
+        <button class="tool-btn" onclick="toggleSettings()" title="الإعدادات">⚙️</button>
         <button class="tool-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
     </div>
 </header>
@@ -182,7 +180,7 @@
 
 <div id="chat-viewport">
     <div class="msg-container bot-align">
-        <div class="bubble">مرحباً! تم دمج Gemini و ChatGPT في واجهة واحدة. اختر الموديل من القائمة بجانب زر الإرسال وابدأ بسؤالك.</div>
+        <div class="bubble">مرحباً! تم تحسين نظام الربط. اختر المحرك وابدأ المحادثة.</div>
     </div>
 </div>
 
@@ -190,8 +188,8 @@
     <div id="status-bar"><span class="loader"></span> جاري المعالجة بواسطة <span id="current-engine-name">Gemini</span>...</div>
     <div class="input-container">
         <select id="engineSelect" class="engine-select" onchange="updateEngineStatus()">
-            <option value="gemini">Gemini 1.5</option>
-            <option value="chatgpt">ChatGPT-4o</option>
+            <option value="gemini_api.yml">Gemini 1.5</option>
+            <option value="gpt_api.yml">ChatGPT-4o</option>
         </select>
 
         <textarea id="promptInput" rows="1" placeholder="اكتب سؤالك هنا..." oninput="autoResize(this)"></textarea>
@@ -203,6 +201,9 @@
 </div>
 
 <script>
+    // إعدادات Markdown
+    marked.setOptions({ breaks: true, gfm: true });
+
     window.onload = () => {
         document.getElementById('ghToken').value = localStorage.getItem('cfg_token') || '';
         document.getElementById('ghRepo').value = localStorage.getItem('cfg_repo') || '';
@@ -216,14 +217,8 @@
         const select = document.getElementById('engineSelect');
         const name = select.options[select.selectedIndex].text;
         document.getElementById('current-engine-name').innerText = name;
-        
-        // تغيير لون هوية الموديل بصرياً
         const btn = document.getElementById('sendBtn');
-        if(select.value === 'chatgpt') {
-            btn.style.background = 'var(--gpt-theme)';
-        } else {
-            btn.style.background = 'var(--primary)';
-        }
+        btn.style.background = select.value.includes('gpt') ? 'var(--gpt-theme)' : 'var(--primary)';
     }
 
     function toggleTheme() {
@@ -235,12 +230,12 @@
 
     function toggleSettings() {
         const p = document.getElementById('settings-panel');
-        p.style.display = (p.style.display === 'grid' || p.style.display === 'flex') ? 'none' : 'grid';
+        p.style.display = (p.style.display === 'none' || p.style.display === '') ? 'grid' : 'none';
     }
 
     function autoResize(el) {
         el.style.height = 'auto';
-        el.style.height = el.scrollHeight + 'px';
+        el.style.height = (el.scrollHeight) + 'px';
     }
 
     function createMessage(text, side) {
@@ -252,7 +247,8 @@
         bubble.className = 'bubble';
         
         if (side === 'bot') {
-            bubble.innerHTML = text;
+            // استخدام marked لتحويل Markdown إلى HTML
+            bubble.innerHTML = marked.parse(text);
             renderCodeBlocks(bubble);
         } else {
             bubble.innerText = text;
@@ -274,22 +270,12 @@
     function renderCodeBlocks(bubble) {
         const preBlocks = bubble.querySelectorAll('pre');
         preBlocks.forEach(pre => {
-            if (pre.parentElement.classList.contains('code-wrapper')) return;
             const wrapper = document.createElement('div');
             wrapper.className = 'code-wrapper';
-            
-            let langName = 'code';
-            const codeInside = pre.querySelector('code');
-            if(codeInside) {
-                const classes = Array.from(codeInside.classList);
-                const langClass = classes.find(c => c.startsWith('language-'));
-                if(langClass) langName = langClass.replace('language-', '');
-            }
-
+            const lang = pre.querySelector('code')?.className.replace('language-', '') || 'code';
             const header = document.createElement('div');
             header.className = 'code-header-bar';
-            header.innerHTML = `<span>${langName}</span><button class="copy-btn-snippet" onclick="copySnippet(this)">نسخ</button>`;
-            
+            header.innerHTML = `<span>${lang}</span><button class="copy-btn-snippet" onclick="copySnippet(this)">نسخ</button>`;
             pre.parentNode.insertBefore(wrapper, pre);
             wrapper.appendChild(header);
             wrapper.appendChild(pre);
@@ -297,8 +283,8 @@
     }
 
     async function copySnippet(btn) {
-        const codeElement = btn.parentElement.nextElementSibling.querySelector('code') || btn.parentElement.nextElementSibling;
-        await navigator.clipboard.writeText(codeElement.innerText);
+        const code = btn.parentElement.nextElementSibling.innerText;
+        await navigator.clipboard.writeText(code);
         btn.innerText = "✅";
         setTimeout(() => btn.innerText = "نسخ", 2000);
     }
@@ -310,13 +296,14 @@
         setTimeout(() => el.innerText = "📋 نسخ الرد", 2000);
     }
 
+    // الدالة المحسنة لبدء المعالجة
     async function startProcess() {
-        const token = document.getElementById('ghToken').value;
-        const repo = document.getElementById('ghRepo').value;
+        const token = document.getElementById('ghToken').value.trim();
+        const repo = document.getElementById('ghRepo').value.trim();
         const prompt = document.getElementById('promptInput').value.trim();
-        const engine = document.getElementById('engineSelect').value;
+        const workflowFile = document.getElementById('engineSelect').value;
 
-        if(!token || !repo || !prompt) return alert("تأكد من إعداد التوكن والمستودع!");
+        if(!token || !repo || !prompt) return alert("يرجى ملء كافة البيانات في الإعدادات!");
 
         localStorage.setItem('cfg_token', token);
         localStorage.setItem('cfg_repo', repo);
@@ -328,42 +315,63 @@
         document.getElementById('sendBtn').disabled = true;
         document.getElementById('status-bar').style.display = 'block';
 
-        // اختيار ملف الـ YAML بناءً على اختيار القائمة
-        const workflowFile = (engine === 'gemini') ? 'gemini_api.yml' : 'gpt_api.yml';
-
         try {
+            // إرسال الطلب مع معالجة الأخطاء التفصيلية
             const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/dispatches`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github+json'
+                },
                 body: JSON.stringify({ ref: 'main', inputs: { prompt: prompt } })
             });
 
-            if(!res.ok) throw new Error(`فشل الاتصال بـ GitHub. تأكد من وجود ملف ${workflowFile}`);
-            checkStatus(repo, token);
+            if(!res.ok) {
+                const errJson = await res.json().catch(()=>({}));
+                throw new Error(errJson.message || `خطأ ${res.status}: تعذر العثور على الملف أو تشغيله`);
+            }
+
+            // الانتظار قليلاً ثم البدء في مراقبة الأكشن المحدد فقط
+            setTimeout(() => checkStatus(repo, token, workflowFile), 3000);
+
         } catch (e) {
-            createMessage("❌ خطأ: " + e.message, 'bot');
+            createMessage("❌ خطأ من GitHub: " + e.message, 'bot');
             resetUI();
         }
     }
 
-    async function checkStatus(repo, token) {
+    // تحسين مراقبة الحالة لتركز على ملف الـ YAML المختار
+    async function checkStatus(repo, token, workflowFile) {
         const startTime = Date.now();
-        const interval = setInterval(async () => {
+        const checkInterval = setInterval(async () => {
             try {
-                const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs?per_page=1`, {
+                // فلترة النتائج حسب ملف الـ workflow المختار فقط
+                const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/runs?per_page=1`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
                 const run = data.workflow_runs[0];
 
                 if(run && run.status === "completed") {
-                    clearInterval(interval);
-                    if(run.conclusion === "success") fetchArtifact(repo, run.id, token);
-                    else { createMessage("❌ فشل الأكشن في التنفيذ.", 'bot'); resetUI(); }
+                    clearInterval(checkInterval);
+                    if(run.conclusion === "success") {
+                        fetchArtifact(repo, run.id, token);
+                    } else {
+                        createMessage("❌ فشل تنفيذ الأكشن. يرجى مراجعة سجلات GitHub.", 'bot');
+                        resetUI();
+                    }
                 }
-            } catch (e) { console.error(e); }
-            if(Date.now() - startTime > 300000) { clearInterval(interval); resetUI(); }
-        }, 5000);
+            } catch (e) { 
+                console.error("Status Check Error:", e);
+            }
+
+            // توقف المحاولة بعد 5 دقائق
+            if(Date.now() - startTime > 300000) {
+                clearInterval(checkInterval);
+                createMessage("⚠️ انتهت مهلة الانتظار. الأكشن يستغرق وقتاً طويلاً.", 'bot');
+                resetUI();
+            }
+        }, 4000);
     }
 
     async function fetchArtifact(repo, runId, token) {
@@ -372,16 +380,17 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            // البحث عن أول أرتيفاكت متاح
             const art = data.artifacts[0];
-            if (!art) throw new Error("لم يتم العثور على ملف النتائج.");
+            
+            if (!art) throw new Error("لم يتم إنتاج ملف النتائج (Artifact).");
 
             const zipRes = await fetch(art.archive_download_url, { headers: { 'Authorization': `Bearer ${token}` } });
             const blob = await zipRes.blob();
             const zip = await JSZip.loadAsync(blob);
             const jsonStr = await zip.file("result.json").async("string");
             
-            createMessage(JSON.parse(jsonStr).response, 'bot');
+            const finalResponse = JSON.parse(jsonStr).response;
+            createMessage(finalResponse, 'bot');
         } catch (e) {
             createMessage("❌ فشل استلام النتيجة: " + e.message, 'bot');
         } finally { resetUI(); }
@@ -391,6 +400,14 @@
         document.getElementById('sendBtn').disabled = false;
         document.getElementById('status-bar').style.display = 'none';
     }
+
+    // دعم الإرسال عبر زر Enter
+    document.getElementById('promptInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            startProcess();
+        }
+    });
 </script>
 </body>
 </html>
