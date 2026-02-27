@@ -108,7 +108,7 @@ async def run_gemini_automation(prompt):
         output = {"status": "error", "message": str(e)}
 
     # 10. حفظ النتيجة النهائية بتنسيق UTF-8 لضمان سلامة اللغة العربية
-    with open("result.json", "w", encoding="utf-8") as f:
+    with open("gemini_result.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
     print("💾 تم حفظ الرد في result.json")
 
