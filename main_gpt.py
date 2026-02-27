@@ -113,7 +113,7 @@ async def run_chatgpt_automation(prompt):
         output = {"status": "error", "message": str(e)}
 
     # 10. حفظ النتيجة النهائية
-    with open("result.json", "w", encoding="utf-8") as f:
+    with open("gpt_result.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=4)
     print("💾 تم حفظ الرد المنظف في result.json")
 
